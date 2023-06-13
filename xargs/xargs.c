@@ -839,8 +839,10 @@ main (int argc, char **argv)
   bc_state.argbuf = xmalloc (bc_ctl.arg_max + 1);
 
   /* Make sure to listen for the kids.  */
+#ifdef SIGCHLD
   signal (SIGCHLD, SIG_DFL);
-
+#endif
+  
   if (!bc_ctl.replace_pat)
     {
       for (; optind < argc; optind++)

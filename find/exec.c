@@ -392,7 +392,9 @@ launch (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
   if (first_time)
     {
       first_time = 0;
+#ifdef SIGCHLD
       signal (SIGCHLD, SIG_DFL);
+#endif
     }
   
 #if defined(__MINGW32__) || defined(_MSC_VER) || defined(__MSDOS__)
