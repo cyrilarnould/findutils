@@ -297,6 +297,40 @@ AM_CONDITIONAL([HAVE_FAKETIME], [test "$FAKETIME" != :])
 # the ANSI2KNR-filtering rules.
 #LIBOBJS=`echo $LIBOBJS|sed 's/\.o /\$U.o /g;s/\.o$/\$U.o/'`
 
+dnl mingw replacement for pwd.h and grp.h. zzz prefix so this comes last in config.h.in
+AH_VERBATIM([zzz_mingw_pwd_grp_replacement], [
+  /* Replace pwd.h and grp.h for mingw */
+  #ifndef PWD_DEFINED
+  #define PWD_DEFINED
+  /* uid/gid stuff */
+  struct passwd {
+    char *pw_name;
+    uid_t pw_uid;
+    gid_t pw_gid;
+    char *pw_dir;
+    char *pw_shell;
+  };
+  
+  extern struct passwd *getpwent (void);
+  extern void           setpwent (void);
+  extern void           endpwent (void);
+  extern struct passwd *getpwnam (const char *);
+  extern struct passwd *getpwuid (uid_t);
+  
+  struct group {
+    char *gr_name;
+    gid_t gr_gid;
+    char **gr_mem;
+  };
+  
+  extern struct group *getgrent (void);
+  extern void   setgrent (void);
+  extern void   endgrent (void);
+  extern struct group *getgrgid (gid_t);
+  extern struct group *getgrnam (const char *);
+  #endif
+  ])
+  
 # Note that in the list below, po/Makefile.in should appear before
 # po/Makefile, so that po/Makefile can be created even if po/Makefile.in
 # starts off missing.

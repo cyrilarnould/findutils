@@ -66,7 +66,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#if !defined(__MINGW32__) && !defined(_MSC_VER)
 #include <grp.h>                /* for setgroups() */
+#endif
 #include <regex.h>
 #include <signal.h>
 #include <stdbool.h>
