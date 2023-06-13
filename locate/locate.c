@@ -1533,6 +1533,7 @@ opendb (const char *name)
                 |O_LARGEFILE
 #endif
                 );
+#if defined HAVE_FCNTL
   if (fd >= 0)
     {
       /* Make sure it won't survive an exec */
@@ -1542,6 +1543,7 @@ opendb (const char *name)
           fd = -1;
         }
     }
+#endif
   return fd;
 }
 
