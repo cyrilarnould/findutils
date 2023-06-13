@@ -275,6 +275,91 @@ prep_child_for_exec (bool close_stdin, const struct saved_cwd *wd)
   return ok;
 }
 
+#ifdef __MINGW32__
+
+/* More sensible spawnvp function: the library one requires arguments
+   with embedded special characters to be quoted.  */
+static char **
+quote_spawn_args (const char * const *argv)
+{
+  /* These characters should include anything that is special to _any_
+     program, including both Windows and Unixy shells.  */
+  const char need_quotes[] = " \t#;\"\'*?[]&|<>|(){}$`^";
+  int i = 0;
+  char **qargv;
+
+  while (argv[i])
+    i++;
+  qargv = malloc ((i + 1)*sizeof(argv[0]));
+
+  if (!qargv)
+    return NULL;
+  for (i = 0; argv[i]; i++)
+    {
+      if (strpbrk (argv[i], need_quotes))
+	{
+	  size_t len = strlen (argv[i]) + 3;
+	  const char *p = argv[i];
+	  char *q;
+
+	  for ( ; *p; p++)
+	    {
+	      if (*p == '\"')
+		len++;
+	    }
+	  qargv[i] = xmalloc (len);
+	  (qargv[i])[0] = '\"';
+	  for (p = argv[i], q = qargv[i] + 1; *p; p++)
+	    {
+	      if (*p == '\"')
+		*q++ = '\\';
+	      *q++ = *p;
+	    }
+	  memcpy (q, "\"", 2);
+	}
+      else
+	qargv[i] = strdup (argv[i]);
+#if 0
+      printf ("%d: `%s'\n", i, qargv[i]);
+#endif
+    }
+  qargv[i] = NULL;
+
+  return qargv;
+}
+
+static void
+free_args (char **args)
+{
+  if (args)
+    {
+      int i;
+
+      for (i = 0; args[i]; i++)
+	free (args[i]);
+      free (args);
+    }
+}
+
+int
+w32_spawnvp (int mode, const char *cmd, const char * const *argv)
+{
+  int ret;
+  char **qargv = quote_spawn_args (argv);
+
+  if (!qargv)
+    qargv = (char **)argv;
+#ifdef __MINGW64__
+  ret = spawnvp (mode, cmd, (char * const *)qargv);
+#else
+  ret = spawnvp (mode, cmd, (const char * const *)qargv);
+#endif
+
+  free_args (qargv);
+  return ret;
+}
+
+#endif	/* __MINGW32__ */
 
 int
 launch (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
@@ -309,7 +394,59 @@ launch (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
       first_time = 0;
       signal (SIGCHLD, SIG_DFL);
     }
+  
+#if defined(__MINGW32__) || defined(_MSC_VER) || defined(__MSDOS__)
+{
+  char *cwd;
+  int wait_ret = 0;
+  cwd = xgetcwd ();
 
+  assert (NULL != execp->wd_for_exec);
+  if (!prep_child_for_exec (execp->close_stdin, execp->wd_for_exec))
+    {
+      _exit (1);
+    }
+  else
+    {
+      if (fd_leak_check_is_enabled ())
+        {
+          complain_about_leaky_fds ();
+        }
+    }
+#ifdef __MSDOS__
+  child_pid = spawnvp (P_WAIT, argv[0], argv);
+  if (child_pid == -1)
+    error (0, errno, "%s", argv[0]);
+  execp->last_child_status |= (child_pid & 0xff);
+#else
+#ifdef __MINGW32__
+  child_pid = w32_spawnvp (_P_NOWAIT, argv[0],
+			   (const char * const *)argv);
+#else
+  child_pid = spawnvp (_P_NOWAIT, argv[0],
+		       (const char * const *)argv);
+#endif
+  if (child_pid == -1)
+    error (0, errno, "%s", argv[0]);
+  else
+    wait_ret = _cwait (&execp->last_child_status, child_pid, 0);
+  if (wait_ret == -1)
+    {
+      error (0, errno, _("error waiting for %s"), argv[0]);
+      state.exit_status = 1;
+      return 0;		/* FAIL */
+    }
+#endif
+  
+  if (chdir (cwd) < 0)
+    {
+      error (0, errno, "%s", cwd);
+      _exit (1);
+    }
+  if (cwd)
+	  free (cwd);
+}
+#else /* _WIN32 */
   child_pid = fork ();
   if (child_pid == -1)
     error (EXIT_FAILURE, errno, _("cannot fork"));
@@ -349,6 +486,7 @@ launch (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
 	  return 0;		/* FAIL */
 	}
     }
+#endif /* _WIN32 */ 
 
   if (WIFSIGNALED (execp->last_child_status))
     {
