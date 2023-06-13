@@ -21,8 +21,10 @@
 #include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
+#if !defined(__MINGW32__) && !defined(_MSC_VER)
 #include <grp.h>
 #include <pwd.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
