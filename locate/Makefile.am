@@ -33,6 +33,8 @@ DISTCLEANFILES = dblocation.texi
 locate_SOURCES = locate.c word_io.c
 nodist_locate_TEXINFOS = dblocation.texi
 
+locate_LDFLAGS = -pthread
+
 AM_CPPFLAGS = -I$(top_srcdir)/lib -I../gl/lib -I$(top_srcdir)/gl/lib -DLOCATE_DB=\"$(LOCATE_DB)\" -DLOCALEDIR=\"$(localedir)\"
 
 LDADD = ../lib/libfind.a ../gl/lib/libgnulib.a $(LIB_CLOSE) $(LIBINTL) $(LIB_SETLOCALE_NULL) $(LIB_MBRTOWC)
