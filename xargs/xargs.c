@@ -74,6 +74,17 @@
 # include "xgetcwd.h"
 #endif
 
+#if defined(__MINGW32__) || defined(_MSC_VER)
+/* MS docs says the maximum is 32K, but testing indicates it fails
+   to run a subsidiary at 32760, which is slightly less.  So we play
+   it safe and leave a 50-byte slack.  We add 2K because by stupid
+   Posix rules bc_init_controlinfo will subtract 2K, and we are not
+   Posix.  PATH_MAX is subtracted to leave enough space for the file
+   name of the invoked program itself, and 2 more for the space and
+   terminating null character.  */
+# define ARG_MAX (32700 + 2048 - PATH_MAX - 2)
+#endif
+
 #ifndef LONG_MAX
 # define LONG_MAX (~(1 << (sizeof (long) * 8 - 1)))
 #endif
