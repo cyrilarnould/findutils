@@ -1172,7 +1172,11 @@ print_args (bool ask)
 
       if (!tty_stream)
 	{
+#if defined(__MINGW32__) || defined(_MSC_VER)
+	  tty_stream = fopen_cloexec_for_read_only ("CON");
+#else
 	  tty_stream = fopen_cloexec_for_read_only ("/dev/tty");
+#endif
 	  if (!tty_stream)
 	    error (EXIT_FAILURE, errno,
 		   _("failed to open /dev/tty for reading"));
@@ -1251,7 +1255,11 @@ prep_child_for_exec (void)
   if (!keep_stdin || open_tty)
     {
       int fd;
+#if defined(__MINGW32__) || defined(_MSC_VER)
+      const char *inputfile = open_tty ? "CON" : "NUL";
+#else
       const char *inputfile = open_tty ? "/dev/tty" : "/dev/null";
+#endif
 
       close (0);
       if ((fd = open (inputfile, O_RDONLY)) < 0)
