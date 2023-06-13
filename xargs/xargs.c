@@ -421,8 +421,12 @@ main (int argc, char **argv)
   void (*act_on_init_result)(void) = noop;
   enum BC_INIT_STATUS bcstatus;
   enum { XARGS_POSIX_HEADROOM = 2048u };
+#ifdef SIGUSR1
+# ifdef SIGUSR2
   struct sigaction sigact;
-
+# endif /* SIGUSR2 */
+#endif /* SIGUSR1 */
+  
   /* We #define __STDC_LIMIT_MACROS above for its side effect on
    * <limits.h>, but we use it here to avoid getting what would
    * otherwise be a spurious compiler warning. */
@@ -827,8 +831,10 @@ main (int argc, char **argv)
   bc_state.argbuf = xmalloc (bc_ctl.arg_max + 1);
 
   /* Make sure to listen for the kids.  */
+#ifdef SIGCHLD
   signal (SIGCHLD, SIG_DFL);
-
+#endif
+  
   if (!bc_ctl.replace_pat)
     {
       for (; optind < argc; optind++)
