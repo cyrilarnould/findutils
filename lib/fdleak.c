@@ -114,9 +114,15 @@ get_max_fd (void)
   if (open_max >= 0)
     return open_max;
 
+#if defined(__MINGW32__) || defined(_MSC_VER)
+  open_max = getdtablesize ();
+  if (open_max == -1)
+    open_max = 16;
+#else  
   open_max = sysconf (_SC_OPEN_MAX);
   if (open_max == -1)
     open_max = _POSIX_OPEN_MAX;	/* underestimate */
+#endif
 
   /* We assume if RLIMIT_NOFILE is defined, all the related macros are, too. */
 #if defined HAVE_GETRLIMIT && defined RLIMIT_NOFILE

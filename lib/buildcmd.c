@@ -491,7 +491,11 @@ bc_init_controlinfo (struct buildcmd_control *ctl,
    * possible value for ARG_MAX on a POSIX compliant system.  See
    * https://www.opengroup.org/onlinepubs/009695399/basedefs/limits.h.html
    */
+#if defined(__MINGW32__) || defined(_MSC_VER)
+  ctl->posix_arg_size_min = 2048L;
+#else  
   ctl->posix_arg_size_min = _POSIX_ARG_MAX;
+#endif
   ctl->posix_arg_size_max = bc_get_arg_max ();
 
   ctl->exit_if_size_exceeded = 0;
