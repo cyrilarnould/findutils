@@ -1,0 +1,19 @@
+diff --git "a/m4/mountlist.m4" "b/m4/mountlist.m4"
+index a3f72dfd7..9901eae15 100644
+--- "a/m4/mountlist.m4"
++++ "b/m4/mountlist.m4"
+@@ -305,6 +305,14 @@ int getmntinfo (struct statfs **, int);
+     esac
+   fi
+ 
++  if test -z "$ac_list_mounted_fs"; then
++    case "$host_os" in
++          mingw*)
++              ac_list_mounted_fs=found
++              ;;
++    esac
++  fi
++
+   if test -z "$ac_list_mounted_fs"; then
+     AC_MSG_ERROR([could not determine how to read list of mounted file systems])
+     # FIXME -- no need to abort building the whole package
