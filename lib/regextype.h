@@ -29,7 +29,7 @@ int get_regex_type(const char *s);
 enum {
   CONTEXT_FINDUTILS = 1u,
   CONTEXT_GENERIC   = 2u,
-  CONTEXT_ALL = CONTEXT_GENERIC|CONTEXT_FINDUTILS,
+  CONTEXT_FINDUTILS_OR_GENERIC = CONTEXT_GENERIC|CONTEXT_FINDUTILS,
 };
 
 
@@ -52,7 +52,7 @@ int get_regex_type_flags(unsigned int ix);
  */
 int get_regex_type_synonym(unsigned int ix, unsigned int context);
 
-/* Returns one of CONTEXT_FINDUTILS, CONTEXT_GENERIC or CONTEXT_ALL.
+/* Returns one of CONTEXT_FINDUTILS, CONTEXT_GENERIC or CONTEXT_FINDUTILS_OR_GENERIC.
  * This identifies whether this regular expression type index is relevant for,
  * respectively, findutils, general callers, or all callers.
  */
