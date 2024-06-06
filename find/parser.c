@@ -2729,7 +2729,11 @@ static void
 check_path_safety (const char *action)
 {
   const char *path = getenv ("PATH");
+#if defined(__MINGW32__) || defined(_MSC_VER)
+  const char *path_separators = ";";
+#else
   const char *path_separators = ":";
+#endif
   size_t pos, len;
 
   if (NULL == path)
@@ -2757,7 +2761,11 @@ check_path_safety (const char *action)
                    "or leading or trailing colons)"),
                  action);
         }
+#if defined(__MINGW32__) || defined(_MSC_VER)
+      else if (path[pos+1] != ':')
+#else
       else if (path[pos] != '/')
+#endif
         {
           char *relpath = strndup (&path[pos], len);
           error (EXIT_FAILURE, 0,
