@@ -389,6 +389,7 @@ complain_about_leaky_fds (void)
   int no_leaks = 1;
   const int leaking_fd = find_first_leaked_fd (non_cloexec_fds, num_cloexec_fds);
 
+#if defined HAVE_FCNTL
   if (leaking_fd >= 0)
     {
       no_leaks = 0;
@@ -398,5 +399,6 @@ complain_about_leaky_fds (void)
                "way to reproduce this problem."),
              leaking_fd);
     }
+#endif
   assert (no_leaks);
 }
