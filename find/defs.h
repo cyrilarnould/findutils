@@ -340,6 +340,9 @@ bool is_fts_cwdfd_enabled(void);
 
 /* find library function declarations.  */
 
+/* xgetcwd.c */
+char *xgetcwd (void);
+
 /* find global function declarations.  */
 
 /* SymlinkOption represents the choice of
