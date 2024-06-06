@@ -22,9 +22,11 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#if !defined(__MINGW32__) && !defined(_MSC_VER)
 #include <grp.h>
-#include <math.h>
 #include <pwd.h>
+#endif
+#include <math.h>
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/types.h>
