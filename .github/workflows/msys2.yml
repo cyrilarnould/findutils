@@ -1,0 +1,59 @@
+name: MSYS2
+on: [push, pull_request]
+
+permissions:
+  contents: write
+
+jobs:
+  msys2:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - { sys: mingw64, env: x86_64 }
+          - { sys: mingw32, env: i686 }
+          - { sys: ucrt64,  env: ucrt-x86_64 }
+          - { sys: clang64, env: clang-x86_64 }
+      fail-fast: false
+
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{matrix.sys}}
+          update: true
+          install: >-
+            base-devel
+            git
+            zip
+            mingw-w64-${{matrix.env}}-autotools
+            mingw-w64-${{matrix.env}}-gcc
+
+      - run: git config --global core.autocrlf input
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: CI-Build
+        shell: msys2 {0}
+        run: |
+          ./bootstrap
+          ./configure --prefix=$(pwd)/findutils CFLAGS="-g -O2 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types" LDFLAGS="-static"
+          make LDFLAGS="-static"
+
+      - name: Package
+        shell: msys2 {0}
+        run: |
+          make install
+          zip findutils-${{matrix.sys}}.zip -r findutils
+
+      - name: Upload Zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: findutils-${{matrix.sys}}
+          path: findutils-${{matrix.sys}}.zip
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: findutils-${{matrix.sys}}.zip
