@@ -1,0 +1,165 @@
+diff --git "a/lib/idcache.c" "b/lib/idcache.c"
+index 580a62702..937e470ff 100644
+--- "a/lib/idcache.c"
++++ "b/lib/idcache.c"
+@@ -22,8 +22,10 @@
+ #include <stddef.h>
+ #include <stdio.h>
+ #include <string.h>
++#if !defined(__MINGW32__) && !defined(_MSC_VER)
+ #include <pwd.h>
+ #include <grp.h>
++#endif
+ 
+ #include <unistd.h>
+ 
+@@ -226,3 +228,149 @@ getgidbyname (const char *group)
+   nogroup_alist = tail;
+   return NULL;
+ }
++
++#if defined(__MINGW32__) || defined(_MSC_VER)
++#include <stdlib.h>
++#include <windows.h>
++#include <lmcons.h>
++
++char *
++getlogin (void)
++{
++  static char user_name[UNLEN+1];
++  DWORD  length = sizeof (user_name);
++
++  if (GetUserName (user_name, &length))
++    return user_name;
++  return NULL;
++}
++
++static struct passwd pwentry = {
++  NULL, 0, 0, NULL, NULL
++};
++
++static int pw_count = 0;
++
++struct passwd *
++getpwent (void)
++{
++  if (!pwentry.pw_name)
++    pwentry.pw_name = strdup (getlogin ());
++  if (stricmp (pwentry.pw_name, "administrator") != 0)
++    pwentry.pw_uid = 42;
++  if (!pwentry.pw_dir)
++    {
++      char *home = getenv ("HOME");
++      char *h;
++
++      if (!home)
++	home = "/";
++      pwentry.pw_dir = strdup (home);
++      for (h = pwentry.pw_dir; *h; h++)
++	if (*h == '\\')
++	  *h = '/';
++    }
++  if (!pwentry.pw_shell)
++    {
++      char *shell = getenv ("SHELL");
++      char *s;
++
++      if (!shell)
++	shell = getenv ("ComSpec");
++      if (!shell)
++	shell = getenv ("COMSPEC");
++      if (!shell)
++	shell = "C:/WINDOWS/system32/cmd.exe";
++      pwentry.pw_shell = strdup (shell);
++      for (s = pwentry.pw_shell; *s; s++)
++	if (*s == '\\')
++	  *s = '/';
++    }
++
++  if (pw_count++ == 0)
++    return &pwentry;
++  return NULL;
++}
++
++void
++setpwent (void)
++{
++  pw_count = 0;
++}
++
++void
++endpwent (void)
++{
++  pw_count = 0;
++}
++
++struct passwd *
++getpwnam (const char *name)
++{
++  char *user = getlogin ();
++
++  if (strcmp (user, name))
++    return NULL;
++  setpwent ();
++  return getpwent ();
++}
++
++struct passwd *
++getpwuid (uid_t uid)
++{
++  (void) uid;
++  setpwent ();
++  return getpwent ();
++}
++
++static char *grentry_members[] = {
++  NULL, NULL
++};
++
++static struct group grentry = {
++  "root", 42, &grentry_members[0]
++};
++
++static int gr_count = 0;
++
++struct group *
++getgrent (void)
++{
++  if (!grentry_members[0])
++    grentry_members[0] = getlogin ();
++
++  if (gr_count++ == 0)
++    return &grentry;
++  return NULL;
++}
++
++void
++setgrent (void)
++{
++  gr_count = 0;
++}
++
++void
++endgrent (void)
++{
++  gr_count = 0;
++}
++
++struct group *
++getgrgid (gid_t gid)
++{
++  (void) gid;
++  setgrent ();
++  return getgrent ();
++}
++
++struct group *
++getgrnam (const char *name)
++{
++  if (strcmp (name, grentry.gr_name))
++    return NULL;
++  setgrent ();
++  return getgrent ();
++}
++
++#endif
