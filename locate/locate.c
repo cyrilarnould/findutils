@@ -1436,6 +1436,7 @@ static struct option const longopts[] =
 static int
 drop_privs (void)
 {
+#if !defined(__MINGW32__) && !defined(_MSC_VER)
   const char * what = "failed";
   const uid_t orig_euid = geteuid ();
   const uid_t uid       = getuid ();
@@ -1519,6 +1520,7 @@ drop_privs (void)
     {
       /* deliberate infinite loop */
     }
+#endif
 }
 
 static int
