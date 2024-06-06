@@ -24,9 +24,11 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#if !defined(__MINGW32__) && !defined(_MSC_VER)
 #include <grp.h>
-#include <math.h>
 #include <pwd.h>
+#endif
+#include <math.h>
 #include <selinux/selinux.h>
 #include <stdarg.h>
 #include <sys/stat.h>
