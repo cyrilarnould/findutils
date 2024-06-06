@@ -65,6 +65,9 @@ static struct debug_option_assoc debugassoc[] =
   };
 #define N_DEBUGASSOC (sizeof(debugassoc)/sizeof(debugassoc[0]))
 
+#ifdef __MINGW32__
+static int w32_symlink_p (const char *);
+#endif
 
 
 
@@ -261,6 +264,12 @@ get_statinfo (const char *pathname, const char *name, struct stat *p)
         }
       else
         {
+#if defined(__MINGW32__) || defined(_MSC_VER)
+      if (errno == ENOENT
+          && ((pathname && strlen (pathname) > FILENAME_MAX)
+              || (name && strlen (name) > FILENAME_MAX)))
+        errno = ENAMETOOLONG;
+#endif
           if (!options.ignore_readdir_race || (errno != ENOENT) )
             {
               nonfatal_target_file_error (errno, pathname);
@@ -270,6 +279,12 @@ get_statinfo (const char *pathname, const char *name, struct stat *p)
     }
   state.have_stat = true;
   state.have_type = true;
+#if defined(__MINGW32__) || defined(_MSC_VER)
+  /* Don't treat NTFS symlinks to directories as directories, because
+     we lack the machinery to detect possible infinite loops.  */
+  if (S_ISDIR (p->st_mode) && w32_symlink_p (name))
+    p->st_mode &= ~(_S_IFDIR);
+#endif
   state.type = p->st_mode;
 
   return 0;
@@ -1153,3 +1168,17 @@ fatal_nontarget_file_error(int errno_value, const char *name)
   /*NOTREACHED*/
   abort ();
 }
+
+#if defined(__MINGW32__) || defined(_MSC_VER)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+static int
+w32_symlink_p (const char *fn)
+{
+  DWORD attrs = GetFileAttributes (fn);
+
+  return (attrs != (DWORD)-1 && (attrs & 0x400) != 0);
+}
+
+#endif
