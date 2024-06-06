@@ -73,6 +73,10 @@
 # pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
 #endif
 
+#if defined(__MINGW32__) || defined(_MSC_VER) || defined(__MSDOS__)
+# include "xgetcwd.h"
+#endif
+
 #ifndef LONG_MAX
 # define LONG_MAX (~(1 << (sizeof (long) * 8 - 1)))
 #endif
@@ -1237,8 +1241,10 @@ prep_child_for_exec (void)
 
      We use 0 here in order to avoid generating a data structure that appears
      to indicate that we (the child) have a child. */
+#if !defined(__MINGW32__) && !defined(_MSC_VER)
   unsigned int slot = add_proc (0);
   set_slot_var (slot);
+#endif
 
   if (!keep_stdin || open_tty)
     {
@@ -1308,7 +1314,33 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
     {
       if (!query_before_executing && print_command)
         print_args (false);
-
+#if defined(__MINGW32__) || defined(_MSC_VER) || defined(__MSDOS__)
+      {
+        char *cwd = xgetcwd ();
+        int e;
+        prep_child_for_exec();
+#ifdef __MSDOS__
+        child = spawnvp (P_WAIT, argv[0], argv);
+#else
+        while ((child = spawnvp (_P_NOWAIT, argv[0],
+# ifdef __MINGW64__
+                                 (char * const *)argv)) < 0
+# else
+                                 (const char * const *)argv)) < 0
+# endif
+               && errno == ENOMEM && procs_executing)
+          wait_for_proc (false, 1u);
+#endif
+        e = errno;      /* errno will be clobbered by wait_for_proc and chdir */
+        chdir (cwd);
+        if (cwd)
+          free (cwd);
+        if (child == -1 && !(e == ENOENT || e == ENOEXEC))
+          error (0, e, "%s", argv[0]);
+      }
+      add_proc (child);
+    }
+#else
       /* Before forking, reap any already-exited child. We do this so
          that we don't leave unreaped children around while we build a
          new command line.  For example this command will spend most
@@ -1435,6 +1467,7 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
           add_proc (child);
         }
     }
+#endif
   return 1;                     /* Success */
 }
 
@@ -1489,6 +1522,10 @@ add_proc (pid_t pid)
 static void
 wait_for_proc (bool all, unsigned int minreap)
 {
+#if defined(__MSDOS__)
+  if (procs_executing)
+        procs_executing--;
+#else
   unsigned int reaped = 0;
   int deferred_exit_status = 0;
 
@@ -1496,6 +1533,35 @@ wait_for_proc (bool all, unsigned int minreap)
     {
       unsigned int i;
       int status;
+
+#if defined(__MINGW32__) || defined(_MSC_VER)
+      do
+        {
+          for (i = 0; i < pids_alloc; i++)
+            {
+              DWORD waited, dstatus;
+
+              if (!pids[i])
+                continue;
+              if (pids[i] == -1) /* spawnvp failed */
+                {
+                  status = 127; /* mimic Unixy shell */
+                  break;
+                }
+              waited = WaitForSingleObject ((HANDLE)pids[i], 10UL);
+              if (waited == WAIT_OBJECT_0) /* this process finished */
+                {
+                  GetExitCodeProcess ((HANDLE)pids[i], &dstatus);
+                  CloseHandle ((HANDLE)pids[i]);
+                  status = dstatus;
+                  break;
+                }
+              else if (waited == WAIT_FAILED)
+                error (1, errno, _("error waiting for child process"));
+            }
+        }
+      while (i == pids_alloc);  /* A child died that we didn't start? */
+#else
       pid_t pid;
       int wflags = 0;
 
@@ -1567,6 +1633,7 @@ wait_for_proc (bool all, unsigned int minreap)
             }
           break;
         }
+#endif
 
       /* Remove the child from the list.  */
       pids[i] = 0;
@@ -1612,6 +1679,7 @@ wait_for_proc (bool all, unsigned int minreap)
       child_error = deferred_exit_status > child_error ? deferred_exit_status : child_error;
       exit (child_error);
     }
+#endif
 }
 
 /* Wait for all child processes to finish.  */
