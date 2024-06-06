@@ -509,8 +509,10 @@ do_time_format (const char *fmt, const struct tm *p, const char *ns, size_t ns_s
       buf_size = 1u;
       buf = xmalloc (buf_size);
     }
+#if !defined(__MINGW32__) || defined(_UCRT)
   while (true)
     {
+#endif
       /* I'm not sure that Solaris will return 0 when the buffer is too small.
        * Therefore we do not check for (buf_used != 0) as the termination
        * condition.
@@ -565,9 +567,14 @@ do_time_format (const char *fmt, const struct tm *p, const char *ns, size_t ns_s
         }
       else
         {
+#if defined(__MINGW32__) && !defined(_UCRT)
+          return 0;
+        }
+#else
           buf = x2nrealloc (buf, &buf_size, sizeof *buf);
         }
     }
+#endif
 }
 
 /* Return a static string formatting the time WHEN according to the
